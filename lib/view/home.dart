@@ -5,7 +5,7 @@ class Home extends StatefulWidget {
   @override
   _HomeState createState() => _HomeState();
 }
-final String _startText = "Start New Game";
+final String _startText = "Game";
 final String _historyText = "Games history";
 
 class _HomeState extends State<Home> {

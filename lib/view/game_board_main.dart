@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:minesweeper/app/router/router.dart';
 import 'dart:math';
 import 'dart:async';
 
 import 'package:minesweeper/view/game_position.dart';
 
 import 'game_position_covered.dart';
+
+enum Game { waiting, started, paused, finished }
+
+const waitingForStart = "Start game";
+const started = "Game in progress";
+const pauseGame = "Pause Game.";
+const resumeGame = "Resume Game.";
+const paused = "Game paused.";
+const finished = "Game finished!";
 
 enum PositionState {
   covered, //default
@@ -16,14 +26,18 @@ enum PositionState {
 
 void main() => runApp(MineSweeper());
 
-class MineSweeper extends StatelessWidget {
+class MineSweeper extends StatefulWidget {
+  @override
+  _MineSweeperState createState() => _MineSweeperState();
+}
+
+class _MineSweeperState extends State<MineSweeper> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: "Mine Sweeper - flutter",
-      home: Board(),
-    );
+        debugShowCheckedModeBanner: false,
+        title: "Minesweeper - flutter",
+        home: Board());
   }
 }
 
@@ -33,13 +47,19 @@ class Board extends StatefulWidget {
 }
 
 class BoardState extends State<Board> {
-  final int rows = 9; //tbd -> create endpoints to start new game
-  final int cols = 9;
-  final int numOfMines = 11;
+  //tbd -> TODO  POST create endpoints to start new game
+  final rowsController = TextEditingController();
+  final colsController = TextEditingController();
+  final minesController = TextEditingController();
+  int rows = 9;
+  int cols = 9;
+  int numOfMines = 11;
+  String currentGameStatus = waitingForStart;
 
   List<List<PositionState>> gridState;
   List<List<bool>> gridBombPositions;
 
+  int count = 0;
   bool alive;
   bool wonGame;
   int minesFound;
@@ -49,18 +69,42 @@ class BoardState extends State<Board> {
   @override
   void initState() {
     resetBoard();
+    rowsController.addListener(_printRowsValue);
+    colsController.addListener(_printColumnValue);
+    minesController.addListener(_printMinestValue);
     super.initState();
+  }
+
+  _printRowsValue() {
+    print("Rows text field: ${rowsController.text}");
+  }
+
+  _printColumnValue() {
+    print("Columns text field: ${colsController.text}");
+  }
+
+  _printMinestValue() {
+    print("Mines text field: ${minesController.text}");
   }
 
   @override
   void dispose() {
+    rowsController.dispose();
+    colsController.dispose();
+    minesController.dispose();
     timer?.cancel();
     super.dispose();
   }
 
   void resetBoard() {
+    //TODO TBD => POST StartNewGame
     alive = true;
     wonGame = false;
+
+    rowsController.text = "";
+    colsController.text = "";
+    minesController.text = "";
+    currentGameStatus = waitingForStart;
     minesFound = 0;
     stopwatch.reset();
 
@@ -128,17 +172,118 @@ class BoardState extends State<Board> {
                         text: wonGame
                             ? "You've Won! $timeElapsed seconds"
                             : alive
-                                ? "[Mines Found: $minesFound] [Total Mines: $numOfMines] [$timeElapsed seconds]"
-                                : "You've Lost! $timeElapsed seconds"),
+                            ? "[Mines Found: $minesFound] [Total Mines: $numOfMines] [$timeElapsed seconds]"
+                            : "You've Lost! $timeElapsed seconds"),
                   ),
                 ),
               ],
             ),
           )),
-      body: Container(
-        color: Colors.grey[50],
-        child: Center(
-          child: buildBoard(),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Center(
+              child: currentGameStatus != waitingForStart
+                  ? buildBoard()
+                  : Container(),
+            ),
+            Divider(
+              height: 10,
+            ),
+            Container(
+              child: Text(
+                "Complete values to start",
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            currentGameStatus == waitingForStart ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                    width: 100,
+                    child: TextField(
+                      decoration: InputDecoration(
+                          border: InputBorder.none, hintText: 'Rows'),
+                      controller: rowsController,
+                    )),
+                SizedBox(
+                  width: 10,
+                ),
+                Container(
+                  width: 100,
+                  child: TextField(
+                    decoration: InputDecoration(
+                        border: InputBorder.none, hintText: 'Columns'),
+                    controller: colsController,
+                  ),
+                ),
+                SizedBox(
+                  width: 10,
+                ),
+                Container(
+                  width: 100,
+                  child: TextField(
+                    decoration: InputDecoration(
+                        border: InputBorder.none, hintText: 'Mines'),
+                    controller: minesController,
+                  ),
+                ),
+              ],
+            ) : Container(),
+            Container(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(currentGameStatus == waitingForStart
+                      ? ""
+                      : currentGameStatus),
+                  Container(
+                      child: currentGameStatus == started
+                          ? MaterialButton(
+                        color: Colors.grey.withOpacity(0.3),
+                        minWidth: 200,
+                        onPressed: () => pauseBoard(),
+                        child: Text(pauseGame),
+                      )
+                          : currentGameStatus == paused
+                          ? MaterialButton(
+                        color: Colors.grey.withOpacity(0.3),
+                        minWidth: 200,
+                        onPressed: () => pauseBoard(),
+                        child: Text(resumeGame),
+                      )
+                          : null),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  Text(
+                    alive && wonGame
+                        ? "$finished - you win!"
+                        : alive
+                        ? "Alive, current moves $count"
+                        : "$finished - you lost.",
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 20.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Container(
+              child: MaterialButton(
+                  color: Colors.grey.withOpacity(0.3),
+                  minWidth: 200,
+                  onPressed: () => startBoard(),
+                  child: Text(currentGameStatus)),
+            ),
+          ],
         ),
       ),
     );
@@ -153,7 +298,7 @@ class BoardState extends State<Board> {
         PositionState state = gridState[y][x];
         int count = mineCount(x, y);
 
-        if (!alive) { //game is still in progress
+        if (!alive) {
           if (state != PositionState.bomb)
             state = gridBombPositions[y][x] ? PositionState.revealed : state;
         }
@@ -165,7 +310,8 @@ class BoardState extends State<Board> {
                 flag(x, y);
               },
               onTap: () {
-                if (state == PositionState.covered) probe(x, y);
+                if (state == PositionState.covered)
+                  probe(x, y); //POST ClickPosition
               },
               child: Listener(
                 child: CoveredMineTile(
@@ -226,10 +372,11 @@ class BoardState extends State<Board> {
         if (!stopwatch.isRunning) stopwatch.start();
       }
     });
+    count++;
   }
 
   void open(int x, int y) {
-    if (!inBoard(x, y)) return;
+    if (!isValidPosition(x, y)) return;
     if (gridState[y][x] == PositionState.open) return;
     gridState[y][x] = PositionState.open;
 
@@ -237,8 +384,10 @@ class BoardState extends State<Board> {
 
     open(x - 1, y);
     open(x + 1, y);
+
     open(x, y - 1);
     open(x, y + 1);
+
     open(x - 1, y - 1);
     open(x + 1, y + 1);
     open(x + 1, y - 1);
@@ -260,18 +409,61 @@ class BoardState extends State<Board> {
 
   int mineCount(int x, int y) {
     int count = 0;
-    count += bombs(x - 1, y);
-    count += bombs(x + 1, y);
-    count += bombs(x, y - 1);
-    count += bombs(x, y + 1);
-    count += bombs(x - 1, y - 1);
-    count += bombs(x + 1, y + 1);
-    count += bombs(x + 1, y - 1);
-    count += bombs(x - 1, y + 1);
+
+    count += isBomb(x - 1, y);
+    count += isBomb(x + 1, y);
+
+    count += isBomb(x, y - 1);
+    count += isBomb(x, y + 1);
+
+    count += isBomb(x - 1, y - 1);
+    count += isBomb(x + 1, y + 1);
+    count += isBomb(x + 1, y - 1);
+    count += isBomb(x - 1, y + 1);
     return count;
   }
 
-  int bombs(int x, int y) => inBoard(x, y) && gridBombPositions[y][x] ? 1 : 0;
+  int isBomb(int x, int y) =>
+      isValidPosition(x, y) && gridBombPositions[y][x] ? 1 : 0;
 
-  bool inBoard(int x, int y) => x >= 0 && x < cols && y >= 0 && y < rows;
+  bool isValidPosition(int x, int y) =>
+      x >= 0 && x < cols && y >= 0 && y < rows;
+
+  startBoard() {
+    setState(() {
+      rows = int.parse (rowsController.text);
+      cols = int.parse(colsController.text);
+      numOfMines = int.parse(minesController.text);
+
+      if (!isValidInput()) {
+        resetBoard();
+        _showAlert(context);
+      } else {
+        resetBoard();
+        currentGameStatus = started;
+      }
+
+    });
+  }
+
+  pauseBoard() {
+    setState(() {
+      currentGameStatus = paused;
+    });
+  }
+
+  bool isValidInput() {
+    return (rows > 9 && cols > 9 && numOfMines > 12) && (rows < 30 && cols < 30 && numOfMines < 500 );
+  }
+
+  void _showAlert(BuildContext context) {
+    showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Invalid Input"),
+          content: Text("Invalid Input, minimum 10x10, maximum 30x30, mines maximum is 500 "),
+        )
+    );
+  }
+
 }
