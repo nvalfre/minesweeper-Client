@@ -138,7 +138,7 @@ class BoardState extends State<Board> {
   Widget build(BuildContext context) {
     int timeElapsed = stopwatch.elapsedMilliseconds ~/ 1000;
     return Scaffold(
-      resizeToAvoidBottomPadding: false,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
           centerTitle: true,
           title: Text('Mine Sweeper'),
